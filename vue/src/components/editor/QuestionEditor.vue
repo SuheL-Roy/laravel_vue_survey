@@ -110,7 +110,7 @@
 
     <!-- Data -->
     <div>
-      <div class="mt-2">
+      <div v-if="shouldHaveOptions()" class="mt-2">
         <h4
           class="text-sm font-semibold mb-1 flex justify-between items-center"
         >
@@ -190,8 +190,9 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, defineProps, defineEmits } from "vue";
 import store from "../../store";
+import { v4 as uuidv4 } from "uuid";
 const props = defineProps({
   question: Object,
   index: Number,
@@ -203,8 +204,54 @@ const emit = defineEmits(["change", "addQuestion", "deleteQuestion"]);
 const model = ref(JSON.parse(JSON.stringify(props.question)));
 // Get question types from vuex
 const questionTypes = computed(() => store.state.questionTypes);
+
 function upperCaseFirst(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function shouldHaveOptions() {
+  return ["select", "radio", "checkbox"].includes(model.value.type);
+}
+
+function getOptions() {
+  return model.value.data.options;
+}
+
+function setOptions(options) {
+  model.value.data.options = options;
+}
+
+function addOption() {
+  setOptions([...getOptions(), { uuid: uuidv4(), text: "" }], dataChange());
+}
+
+function removeOption(option) {
+  setOptions(getOptions().filter((op) => op !== option));
+  dataChange();
+}
+
+function typeChange() {
+  console.log(shouldHaveOptions());
+  if (shouldHaveOptions()) {
+    setOptions(getOptions() || []);
+  }
+  dataChange();
+}
+
+function dataChange() {
+  const data = JSON.parse(JSON.stringify(model.value));
+  if (!shouldHaveOptions()) {
+    delete data.data.options;
+  }
+  emit("change", data);
+}
+
+function addQuestion() {
+   emit("addQuestion", props.index + 1);
+}
+
+function deleteQuestion() {
+  emit("deleteQuestion", props.question);
 }
 </script>
 

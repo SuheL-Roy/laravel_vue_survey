@@ -1,203 +1,76 @@
 import { createStore } from "vuex";
 import axiosClient from "../axios";
 
-const tmpSurveys = [
-  {
-    id:100,
-    title:"welcome demo",
-    slug:"welcome-demo",
-    status: "draft",
-    image:'https://picsum.photos/200/300?grayscale',
-    description:"welcome to description",
-    created_at:"2024-10-01",
-    updated_at:"2024-10-01",
-    expire_at:"2024-10-01",
-    questions:[
-      {
-        id:1,
-        type:"select",
-        question:'Form which country',
-        description:null,
-        data:{
-          options: [
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-          ]
-        },
-      },
-      {
-        id:2,
-        type:"checkbox",
-        question:'Form which country',
-        description:null,
-        data:{
-          options: [
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-          ]
-        },
-      },
-      {
-        id:2,
-        type:"radio",
-        question:'Form which country',
-        description:null,
-        data:{
-          options: [
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-          ]
-        },
-      }
-    ]
-  },
-  {
-    id:1001,
-    title:"welcome demo",
-    slug:"welcome-demo",
-    status: "draft",
-    image:'https://picsum.photos/200/300?grayscale',
-    description:"welcome to description",
-    created_at:"2024-10-01",
-    updated_at:"2024-10-01",
-    expire_at:"2024-10-01",
-    questions:[
-      {
-        id:1,
-        type:"select",
-        question:'Form which country',
-        description:null,
-        data:{
-          options: [
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-          ]
-        },
-      },
-      {
-        id:2,
-        type:"checkbox",
-        question:'Form which country',
-        description:null,
-        data:{
-          options: [
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-          ]
-        },
-      },
-      {
-        id:2,
-        type:"radio",
-        question:'Form which country',
-        description:null,
-        data:{
-          options: [
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-            {
-              uuid:"ghghfdsaasgjhjhsfdsh",
-              text:"USA"
-            },
-          ]
-        },
-      }
-    ]
-  },
- 
-]
-
 const store = createStore({
   state: {
     user: {
       data: {},
       token: sessionStorage.getItem("TOKEN"),
     },
-    surveys: [...tmpSurveys],
+    currentSurvey: {
+      loading: false,
+      data: {},
+    },
+    surveys: {
+      loading: false,
+      data: {},
+    },
     questionTypes: ["text", "select", "radio", "checkbox", "textarea"],
   },
   getters: {},
   actions: {
+    getSurveys({commit}){
+      commit("setSurveysLoading", true);
+      axiosClient
+      .get("/survey")
+      .then((res) => {
+        commit("setSurveys", res.data);
+        commit("setSurveysLoading", false);
+        return res;
+      })
+      .catch((err) => {
+        commit("setSurveysLoading", false);
+        throw err;
+      });
+    },
+    getSurvey({ commit }, id) {
+      commit("setCurrentSurveyLoading", true);
+      axiosClient
+        .get(`/survey/${id}`)
+        .then((res) => {
+          commit("setCurrentSurvey", res.data);
+          commit("setCurrentSurveyLoading", false);
+          return res;
+        })
+        .catch((err) => {
+          commit("setCurrentSurveyLoading", false);
+          throw err;
+        });
+    },
+    saveSurvey({ commit }, survey) {
+      delete survey.image_url;
+      let response;
+      if (survey.id) {
+        response = axiosClient
+          .put(`/survey/${survey.id}`, survey)
+          .then((res) => {
+            console.log(res.data);
+            commit("setCurrentSurvey", res.data);
+            return res;
+          });
+      } else {
+        response = axiosClient.post("/survey", survey).then((res) => {
+          commit("setCurrentSurvey", res.data);
+          return res;
+        });
+
+        return response;
+      }
+    },
+    deleteSurvey({ commit }, id) {
+      return axiosClient.delete(`/survey/${id}`);
+    },
+
     register({ commit }, user) {
       return axiosClient.post("/register", user).then(({ data }) => {
         commit("setUser", data);
@@ -214,12 +87,35 @@ const store = createStore({
 
     logout({ commit }) {
       return axiosClient.post("/logout").then(({ data }) => {
-        commit("logout",data);
+        commit("logout", data);
         return data;
       });
     },
   },
   mutations: {
+    setCurrentSurveyLoading: (state, loading) => {
+      state.currentSurvey.loading = loading;
+    },
+     setSurveysLoading: (state, loading) => {
+      state.surveys.loading = loading;
+    },
+    setSurveys: (state, survey) => {
+      state.surveys.data = survey.data;
+    },
+    setCurrentSurvey: (state, survey) => {
+      state.currentSurvey.data = survey.data;
+    },
+    saveSurvey: (state, survey) => {
+      state.surveys = [...state.surveys, survey.data];
+    },
+    updateSurvey: (state, survey) => {
+      state.surveys = state.surveys.map((s) => {
+        if (s.id == survey.data.id) {
+          return survey.data;
+        }
+        return s;
+      });
+    },
     logout: (state) => {
       (state.user.data = {}), (state.user.token = null);
       sessionStorage.removeItem("TOKEN");

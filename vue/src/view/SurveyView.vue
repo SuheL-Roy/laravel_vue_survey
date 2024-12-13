@@ -3,10 +3,20 @@
     <template v-slot:header>
       <div class="flex justify-between item-center">
         <h1 class="text-3xl font-bold text-gray-900">
-          {{ model.id ? model.title : "Create Surveys" }}
+          {{ route.params.id ? model.title : "Create Surveys" }}
         </h1>
+        <button
+          v-if="route.params.id"
+          type="button"
+          @click="deleteSurvey()"
+          class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-2"
+        >
+          Delete
+        </button>
       </div>
     </template>
+    <div v-if="SurveyLoading" class="flex justify-center">Loading...</div>
+
     <form @submit.prevent="saveSurvey" class="animate-fade-in-down">
       <div class="shadow sm:rounded-md sm:overflow-hidden">
         <!-- Survey Fields -->
@@ -18,8 +28,8 @@
             </label>
             <div class="mt-1 flex items-center">
               <img
-                v-if="model.image"
-                :src="model.image"
+                v-if="model.image_url"
+                :src="model.image_url"
                 :alt="model.title"
                 class="w-64 h-48 object-cover"
               />
@@ -66,6 +76,7 @@
               id="title"
               v-model="model.title"
               autocomplete="survey_title"
+              placeholder="Write Your Title"
               class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
             />
           </div>
@@ -101,7 +112,7 @@
               type="date"
               name="expire_date"
               id="expire_date"
-              v-model="model.expire_at"
+              v-model="model.expire_date"
               class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
             />
           </div>
@@ -184,30 +195,98 @@
 </template>
 
 <script setup>
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
+import { v4 as uuidv4 } from "uuid";
 import PageComponents from "../components/PageComponents.vue";
 import store from "../store";
-import { ref } from "vue";
+import { computed, ref, watch } from "vue";
 import QuestionEditor from "../components/editor/QuestionEditor.vue";
 const route = useRoute();
+const router = useRouter();
+const SurveyLoading = computed(() => store.state.currentSurvey.loading);
 
 let model = ref({
   title: "",
   status: false,
   description: null,
   image: null,
+  image_url: null,
   expire_date: null,
   questions: [],
 });
+
+watch(
+  () => store.state.currentSurvey.data,
+  (newVal, oldVal) => {
+    model.value = {
+      ...JSON.parse(JSON.stringify(newVal)),
+      status: newVal.status !== "draft",
+    };
+  }
+);
+
 if (route.params.id) {
-  model.value = store.state.surveys.find(
-    (s) => s.id === parseInt(route.params.id)
-  );
+  // model.value = store.state.surveys.find(
+  //   (s) => s.id === parseInt(route.params.id)
+  // );
+  store.dispatch("getSurvey", route.params.id);
 }
 
-function addQuestion() {}
-function deleteQuestion() {}
-function questionChange() {}
+function addQuestion(index) {
+  const newQuestion = {
+    id: uuidv4(),
+    type: "text",
+    question: "",
+    description: null,
+    data: {},
+  };
+  model.value.questions.splice(index, 0, newQuestion);
+}
+
+function onImageChoose(ev) {
+  const file = ev.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      model.value.image = reader.result; // Preview image as Base64
+      model.value.image_url = reader.result; // Optional: for storing or further use
+    };
+    reader.readAsDataURL(file); // Call this method on the FileReader instance
+  }
+}
+function deleteQuestion(question) {
+  model.value.questions = model.value.questions.filter((q) => q !== question);
+}
+function questionChange(question) {
+  model.value.questions = model.value.questions.map((q) => {
+    if (q.id === question.id) {
+      return JSON.parse(JSON.stringify(question));
+    }
+    return q;
+  });
+}
+
+function saveSurvey() {
+  store
+    .dispatch("saveSurvey", model.value)
+    .then(({ data }) => {
+      console.log(data);
+      router.push({ name: "SurveyView", params: { id: data.data.id } });
+    })
+    .catch((error) => {});
+}
+
+function deleteSurvey() {
+  if (
+    confirm(
+      `Are You sure Want to delete this survey? operation can,t be undone`
+    )
+  ) {
+    store.dispatch("deleteSurvey", model.value.id).then(({ data }) => {
+      router.push({ name: "Survey" });
+    });
+  }
+}
 </script>
 
 <style></style>
