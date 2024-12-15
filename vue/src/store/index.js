@@ -13,25 +13,32 @@ const store = createStore({
     },
     surveys: {
       loading: false,
+      links: [],
       data: {},
     },
     questionTypes: ["text", "select", "radio", "checkbox", "textarea"],
+    notification: {
+      show: false,
+      type: "success",
+      message: "",
+    },
   },
   getters: {},
   actions: {
-    getSurveys({commit}){
+    getSurveys({ commit }, { url = null } = {}) {
       commit("setSurveysLoading", true);
+      url = url || "/survey";
       axiosClient
-      .get("/survey")
-      .then((res) => {
-        commit("setSurveys", res.data);
-        commit("setSurveysLoading", false);
-        return res;
-      })
-      .catch((err) => {
-        commit("setSurveysLoading", false);
-        throw err;
-      });
+        .get(url)
+        .then((res) => {
+          commit("setSurveys", res.data);
+          commit("setSurveysLoading", false);
+          return res;
+        })
+        .catch((err) => {
+          commit("setSurveysLoading", false);
+          throw err;
+        });
     },
     getSurvey({ commit }, id) {
       commit("setCurrentSurveyLoading", true);
@@ -96,10 +103,11 @@ const store = createStore({
     setCurrentSurveyLoading: (state, loading) => {
       state.currentSurvey.loading = loading;
     },
-     setSurveysLoading: (state, loading) => {
+    setSurveysLoading: (state, loading) => {
       state.surveys.loading = loading;
     },
     setSurveys: (state, survey) => {
+      state.surveys.links = survey.meta.links;
       state.surveys.data = survey.data;
     },
     setCurrentSurvey: (state, survey) => {
@@ -124,6 +132,14 @@ const store = createStore({
       state.user.data = userdata.user; // Set user details
       state.user.token = userdata.token; // Set token
       sessionStorage.setItem("TOKEN", userdata.token);
+    },
+    notify: (state, { message, type }) => {
+      state.notification.show = true;
+      state.notification.type = type;
+      state.notification.message = message;
+      setTimeout(() => {
+        state.notification.show = false;
+      }, 3000);
     },
   },
   modules: {},

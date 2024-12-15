@@ -12,6 +12,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
 class SurveyController extends Controller
 {
@@ -21,7 +23,7 @@ class SurveyController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        return SurveyResource::collection(Survey::where('user_id', $user->id)->paginate());
+        return SurveyResource::collection(Survey::where('user_id', $user->id)->paginate(3));
     }
 
     /**
@@ -76,7 +78,35 @@ class SurveyController extends Controller
                 File::delete($absolutePath);
             }
         }
+
         $survey->update($data);
+        // Get ids as plain array of existing questions
+        $existingIds = $survey->questions()->pluck('id')->toArray();
+        // Get ids as plain array of new questions
+        $newIds = Arr::pluck($data['questions'], 'id');
+        // Find questions to delete
+        $toDelete = array_diff($existingIds, $newIds);
+        //Find questions to add
+        $toAdd = array_diff($newIds, $existingIds);
+
+        // Delete questions by $toDelete array
+        SurveyQuestion::destroy($toDelete);
+
+        // Create new questions
+        foreach ($data['questions'] as $question) {
+            if (in_array($question['id'], $toAdd)) {
+                $question['survey_id'] = $survey->id;
+                $this->createQuestion($question);
+            }
+        }
+
+        // Update existing questions
+        $questionMap = collect($data['questions'])->keyBy('id');
+        foreach ($survey->questions as $question) {
+            if (isset($questionMap[$question->id])) {
+                $this->updateQuestion($question, $questionMap[$question->id]);
+            }
+        }
         return new SurveyResource($survey);
     }
 
@@ -89,7 +119,9 @@ class SurveyController extends Controller
         if ($user->id !== $survey->user_id) {
             return abort(403, 'Unauthorized Action');
         }
+        DB::table('survey_questions')->where('survey_id', $survey->id)->delete();
         $survey->delete();
+        
         if ($survey->image) {
             $absolutePath = public_path($survey->image);
             File::delete($absolutePath);
@@ -152,5 +184,27 @@ class SurveyController extends Controller
         ]);
 
         return SurveyQuestion::create($validator->validated());
+    }
+
+    private function updateQuestion(SurveyQuestion $question, $data)
+    {
+        if (is_array($data['data'])) {
+            $data['data'] = json_encode($data['data']);
+        }
+        $validator = Validator::make($data, [
+            'id' => 'exists:App\Models\SurveyQuestion,id',
+            'question' => 'required|string',
+            'type' => ['required', Rule::in([
+                Survey::TYPE_TEXT,
+                Survey::TYPE_TEXTAREA,
+                Survey::TYPE_SELECT,
+                Survey::TYPE_RADIO,
+                Survey::TYPE_CHECKBOX,
+            ])],
+            'description' => 'nullable|string',
+            'data' => 'present',
+        ]);
+
+        return $question->update($validator->validated());
     }
 }

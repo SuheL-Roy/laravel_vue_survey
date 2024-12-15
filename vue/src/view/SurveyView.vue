@@ -269,10 +269,16 @@ function questionChange(question) {
 function saveSurvey() {
   store
     .dispatch("saveSurvey", model.value)
-    .then(({ data }) => {
-      console.log(data);
+
+    .then((data) => {
+      store.commit("notify", {
+        type: 'success',
+        message: "The survey was successfully",
+      });
+
       router.push({ name: "SurveyView", params: { id: data.data.id } });
     })
+
     .catch((error) => {});
 }
 
