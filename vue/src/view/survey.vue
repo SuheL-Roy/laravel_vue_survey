@@ -30,7 +30,7 @@
       </div>
     </template>
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3">
-      <div
+      <!-- <div
         v-for="survey in Surveys"
         :key="survey.id"
         class="flex flex-col py-4 px-6 shadow-md bg-white hover:bg-gray-50 h-[470px]"
@@ -62,7 +62,7 @@
           <button
             v-if="survey.id"
             type="button"
-            @click="deleteSurvey(survey)"
+            @click="deleteSurvey(survey.id)"
             class="h-8 w-8 flex items-center justify-center rounded-full border border-transparent text-sm text-red-500 focus:ring-2 focus:ring-offset-3 focus:ring-red-500"
           >
             <svg
@@ -71,7 +71,7 @@
               viewBox="0 0 24 24"
               stroke-width="1.5"
               stroke="currentColor"
-              class="h-5 w-5 "
+              class="h-5 w-5"
             >
               <path
                 stroke-linecap="round"
@@ -81,22 +81,38 @@
             </svg>
           </button>
         </div>
-      </div>
+      </div> -->
+      <SurveyListItem
+        v-for="survey in Surveys"
+        :key="survey.id"
+        :survey="survey"
+        @delete="deleteSurvey(survey)"
+      />
     </div>
   </PageComponents>
 </template>
 
 <script setup>
 import PageComponents from "../components/PageComponents.vue";
+import SurveyListItem from "../view/SurveyListItem.vue";
 import { computed } from "vue";
 import store from "../store";
+import { useRouter } from "vue-router";
+import SurveyListItemVue from "./SurveyListItem.vue";
+const router = useRouter();
 const Surveys = computed(() => store.state.surveys.data);
-function deleteSurvey(survey){
-  if(confirm(`Are You sure Want to delete this survey? operation can,t be undone`)){
-    
+function deleteSurvey(survey) {
+  if (
+    confirm(
+      `Are You sure Want to delete this survey? operation can,t be undone`
+    )
+  ) {
+    store.dispatch("deleteSurvey", survey.id).then(({ data }) => {
+      store.dispatch("getSurveys");
+    });
   }
 }
-store.dispatch('getSurveys');
+store.dispatch("getSurveys");
 </script>
 
 <style>
