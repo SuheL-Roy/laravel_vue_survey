@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreSurveyAnswerRequest;
 use App\Models\Survey;
 use App\Http\Requests\StoreSurveyRequest;
 use App\Http\Requests\UpdateSurveyRequest;
 use App\Http\Resources\SurveyResource;
+use App\Models\SurveyAnswer;
 use App\Models\SurveyQuestion;
+use App\Models\SurveyQuestionAnswer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
@@ -59,6 +62,42 @@ class SurveyController extends Controller
             return abort(403, 'Unauthorized Action');
         }
         return new SurveyResource($survey);
+    }
+
+    public function showForGuest($slug)
+    {
+        $survey = Survey::where('slug', $slug)->first();
+        return new SurveyResource($survey);
+    }
+
+    public function storeAnswer(StoreSurveyAnswerRequest $request, $survey)
+    {
+        $validated = $request->validated();
+        //        var_dump($validated, $survey);
+
+        $surveyAnswer = SurveyAnswer::create([
+            'survey_id' => $survey,
+            'start_date' => date('Y-m-d H:i:s'),
+            'end_date' => date('Y-m-d H:i:s'),
+        ]);
+
+        foreach ($validated['answers'] as $questionId => $answer) {
+            $question = SurveyQuestion::where(['id' => $questionId, 'survey_id' => $survey])->get();
+            if (!$question) {
+                return response("Invalid question ID: \"$questionId\"", 400);
+            }
+
+            $data = [
+                'survey_question_id' => $questionId,
+                'survey_answer_id' => $surveyAnswer->id,
+                'answer' => is_array($answer) ? json_encode($answer) : $answer
+            ];
+
+            $questionAnswer = SurveyQuestionAnswer::create($data);
+        }
+
+        return response("", 201);
+       //return $questionAnswer;
     }
 
     /**
@@ -121,7 +160,7 @@ class SurveyController extends Controller
         }
         DB::table('survey_questions')->where('survey_id', $survey->id)->delete();
         $survey->delete();
-        
+
         if ($survey->image) {
             $absolutePath = public_path($survey->image);
             File::delete($absolutePath);

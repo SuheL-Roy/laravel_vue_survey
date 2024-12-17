@@ -41,6 +41,9 @@
             v-model="user.email"
             class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
           />
+          <p v-if="errors.email" class="text-red-600 text-sm">
+            {{ errors.email[0] }}
+          </p>
         </div>
       </div>
 
@@ -111,6 +114,7 @@
 </template>
 <script setup>
 import { useRouter } from "vue-router";
+import { ref } from "vue";
 import store from "../store";
 
 const router = useRouter();
@@ -120,11 +124,28 @@ const user = {
   password: "",
   password_confirmation: "",
 };
+const errors = ref({});
 
 function register(env) {
   env.preventDefault();
-  store.dispatch("register", user).then((res) => {
-    router.push({ name: "Dashboard" });
-  });
+  errors.value = {};
+  store
+    .dispatch("register", user)
+    .then((res) => {
+      router.push({ name: "Dashboard" });
+    })
+    .catch((error) => {
+      console.log(error.response.data.errors);
+      if (error.response && error.response.status === 422) {
+        // Check if there's a general error message
+        if (error.response.data.errors) {
+          errors.value.general = error.response.data.errors;
+        }
+        // You can still handle field-specific errors if needed
+        if (error.response.data.errors) {
+          errors.value = error.response.data.errors;
+        }
+      }
+    });
 }
 </script>

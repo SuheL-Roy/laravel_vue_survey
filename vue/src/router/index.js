@@ -7,6 +7,7 @@ import Survey from "../view/survey.vue";
 import store from "../store";
 import AuthLayout from "../components/AuthLayout.vue";
 import SurveyView from "../view/SurveyView.vue";
+import SurveyPublicView from "../view/SurveyPublicView.vue";
 
 const routes = [
   {
@@ -40,7 +41,11 @@ const routes = [
       },
     ],
   },
-
+  {
+    path: "/view/survey/:slug",
+    name: "SurveyPublicView",
+    component: SurveyPublicView,
+  },
   {
     path: "/auth",
     redirect: "/login",
@@ -59,11 +64,6 @@ const routes = [
       },
     ],
   },
-
-
-  
-
- 
 ];
 const router = createRouter({
   history: createWebHistory(),
@@ -73,10 +73,7 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !store.state.user.token) {
     next({ name: "Login" });
-  } else if (
-    store.state.user.token &&
-    (to.meta.isGuest)
-  ) {
+  } else if (store.state.user.token && to.meta.isGuest) {
     next({ name: "Dashboard" });
   } else {
     next();

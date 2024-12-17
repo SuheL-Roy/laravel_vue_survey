@@ -272,11 +272,11 @@ function saveSurvey() {
 
     .then((data) => {
       store.commit("notify", {
-        type: 'success',
+        type: "success",
         message: "The survey was successfully",
       });
 
-      router.push({ name: "SurveyView", params: { id: data.data.id } });
+      router.push({ name: "Survey" });
     })
 
     .catch((error) => {});
